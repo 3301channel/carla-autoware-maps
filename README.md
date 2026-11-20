@@ -8,6 +8,35 @@
 
 ---
 
+```bash
+source ~/.nvidia_env.sh
+source /opt/ros/humble/setup.bash
+source /home/cn/autoware/install/setup.bash
+
+# 规划验证
+ros2 launch autoware_launch planning_simulator.launch.xml \
+    map_path:=$HOME/autoware_data/maps/Town04 \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=carla_sensor_kit
+```
+
+![img2](img2.png)
+
+```bash
+source ~/.nvidia_env.sh
+source /opt/ros/humble/setup.bash
+source /home/cn/autoware/install/setup.bash
+
+# 外部仿真
+ros2 launch autoware_launch e2e_simulator.launch.xml \
+    map_path:=$HOME/autoware_data/maps/Town04 \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=carla_sensor_kit \
+    simulator_type:=carla
+```
+
+![img1](img1.png)
+
 ## 目录
 
 - [0. 环境](#0-环境基线)
@@ -869,4 +898,4 @@ ros2 bag record -o ~/parking_sim_logs/run_$(date +%Y%m%d_%H%M%S) \
 
 ```
 
-![img](/home/cn/桌面/map/img.png)
+![img](img.png)
