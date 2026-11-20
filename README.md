@@ -45,7 +45,7 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
   - [2.1 e2e_simulator.launch.xml — 出生点与定位方式可控](#21-e2e_simulatorlaunchxml--出生点与定位方式可控)
   - [2.2 carla/topics.yaml — 频率阈值（**未生效**）](#22-carlatopicsyaml--频率阈值未生效)
   - [2.3 ndt_scan_matcher.param.yaml — 放宽收敛阈值](#23-ndt_scan_matcherparamyaml--放宽收敛阈值)
-  - S[2.4 map_based_prediction.param.yaml — 修复上游崩溃](#24-map_based_predictionparamyaml--修复上游崩溃)
+  - [2.4 map_based_prediction.param.yaml — 修复上游崩溃](#24-map_based_predictionparamyaml--修复上游崩溃)
   - [2.5 autoware_carla_interface.launch.xml — 真值定位开关解耦](#25-autoware_carla_interfacelaunchxml--真值定位开关解耦)
   - [2.6 system/topics.yaml — /tf 监测阈值](#26-systemtopicsyaml--tf-监测阈值)
   - [2.7 freespace_planner.param.yaml — 泊车车辆膨胀量](#27-freespace_plannerparamyaml--泊车车辆膨胀量)
