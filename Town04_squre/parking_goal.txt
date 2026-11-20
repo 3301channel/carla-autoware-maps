@@ -1,0 +1,16 @@
+# draw_parking_row.py - MAP frame coordinates
+row: left
+count: 22
+lot: 264.000 178.000 300.000 241.000
+slot_width: 2.500
+slot_depth: 5.000
+pitch: 2.800
+goal_slot: 12
+goal_x: 266.500000
+goal_y: 210.550000
+goal_yaw_rad: 1.570796
+ego_x: 272.000000
+ego_y: 210.550000
+carla_spawn_x: 272.000000
+carla_spawn_y: -210.550000
+enable_correct_goal_pose: false

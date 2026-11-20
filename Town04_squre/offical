@@ -1,0 +1,50 @@
+
+# Run carla
+cd carla
+./CarlaUE4.sh -prefernvidia -quality-level=Low -RenderOffScreen
+
+
+# Run Autoware with CARLA
+
+ros2 launch autoware_launch e2e_simulator.launch.xml \
+    map_path:=$HOME/autoware_data/maps/Town04 \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=carla_sensor_kit \
+    simulator_type:=carla
+    
+ros2 launch autoware_launch autoware.launch.xml \
+    map_path:=$HOME/autoware_data/maps/Town04 \
+    vehicle_model:=sample_vehicle \
+    sensor_model:=carla_sensor_kit
+
+    
+# 录制autoware侧日志
+
+# 先列出当前话题，确认实际名称
+ros2 topic list | grep -E "sensing|vehicle|localization|planning|control|tf"
+
+# 录制核心子集（根据你的传感器配置调整）
+ros2 bag record -o ~/parking_sim_logs/run_$(date +%Y%m%d_%H%M%S) \
+  /tf /tf_static \
+  /sensing/lidar/pointcloud \
+  /sensing/camera/cam_front/image_raw \
+  /sensing/imu/imu_data \
+  /vehicle/status/velocity_status \
+  /vehicle/status/steering_status \
+  /localization/kinematic_state \
+  /planning/trajectory \
+  /control/command/control_cmd
+  
+# 回放
+# 在 Autoware 未运行的环境下回放（避免话题冲突）
+ros2 bag play /home/cn/parking_sim_logs/run_20261116_172634 --clock
+
+source /opt/ros/jazzy/setup.bash
+ros2 topic echo /control/command/control_cmd
+ros2 topic echo /planning/trajectory
+ros2 topic echo /vehicle/status/velocity_status
+ros2 topic echo /tf --filter "m.transforms[0].child_frame_id == 'base_link'" 2>/dev/null || ros2 topic echo /tf
+rqt_plot /control/command/control_cmd/longitudinal/velocity /vehicle/status/velocity_status/longitudinal/velocity
+
+  
+# 录制 CARLA 侧的仿真状态
