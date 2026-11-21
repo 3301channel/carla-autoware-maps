@@ -1185,9 +1185,17 @@ source /opt/ros/humble/setup.bash
 source ~/autoware_2.1.0/install/setup.bash
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 
-ros2 service call /api/routing/clear_route autoware_adapi_v1_msgs/srv/ClearRoute "{}"
-
-ros2 service call /api/routing/set_route_points autoware_adapi_v1_msgs/srv/SetRoutePoints "{header: {frame_id: 'map'}, option: {allow_goal_modification: false}, goal: {position: {x: 273.215, y: 236.173, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.99999, w: -0.00183}}, waypoints: []}"
+ros2 service call /api/routing/set_route_points \
+  autoware_adapi_v1_msgs/srv/SetRoutePoints \
+  "{
+    header: {frame_id: 'map'},
+    option: {allow_goal_modification: false},
+    goal: {
+      position: {x: 273.215, y: 236.173, z: 0.0},
+      orientation: {x: 0.0, y: 0.0, z: 0.99999, w: -0.00183}
+    },
+    waypoints: []
+  }"
 
 # rosbag（bash 4）
 ros2 bag record -o ~/parking_sim_logs/run_$(date +%Y%m%d_%H%M%S) \
