@@ -1,10 +1,8 @@
 # Autoware 2.1.0 Town04 地图泊车CARLA 仿真
 
-> 记录在 `~/autoware_2.1.0` 全新安装后，为跑通 CARLA + Town04 端到端仿真、并让自动泊车真正工作所做的全部改动。
+> 记录在 `~/autoware_2.1.0` 全新安装后，为跑通 CARLA + Town04 自动泊车仿真所做的全部改动
 >
-> 最后更新：2026-11-20
->
-> 地图文件夹分别是：Town04下采样地图、Town04 tiny分割停车场的地图、parking lot模拟停车场
+> 地图文件夹分别是：`/Town04`下采样地图、`/Town04 tiny`分割停车场的地图、`/parking lot`模拟停车场
 
 ---
 
@@ -20,7 +18,7 @@ ros2 launch autoware_launch planning_simulator.launch.xml \
     sensor_model:=carla_sensor_kit
 ```
 
-![img2](img2.png)
+![img2](img/img2.png)
 
 ```bash
 source ~/.nvidia_env.sh
@@ -35,7 +33,9 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
     simulator_type:=carla
 ```
 
-![img1](img1.png)
+![img1](img/img1.png)
+
+![img3](img/img3.png)
 
 ## 目录
 
@@ -47,10 +47,13 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
   - [2.3 ndt_scan_matcher.param.yaml — 放宽收敛阈值](#23-ndt_scan_matcherparamyaml--放宽收敛阈值)
   - [2.4 map_based_prediction.param.yaml — 修复上游崩溃](#24-map_based_predictionparamyaml--修复上游崩溃)
   - [2.5 autoware_carla_interface.launch.xml — 真值定位开关解耦](#25-autoware_carla_interfacelaunchxml--真值定位开关解耦)
-  - [2.6 system/topics.yaml — /tf 监测阈值](#26-systemtopicsyaml--tf-监测阈值)
+  - [2.6 system/topics.yaml — 监测阈值（真正生效的那份）](#26-systemtopicsyaml--监测阈值真正生效的那份)
   - [2.7 freespace_planner.param.yaml — 泊车车辆膨胀量](#27-freespace_plannerparamyaml--泊车车辆膨胀量)
   - [2.8 component_state_monitor.launch.py — 容器改多线程](#28-component_state_monitorlaunchpy--容器改多线程)
   - [2.9 topic_state_monitor_core.cpp — QoS 队列深度](#29-topic_state_monitor_corecpp--qos-队列深度需编译)
+  - [2.10 freespace_planner.param.yaml — 泊车姿态与揉库行为](#210-freespace_plannerparamyaml--泊车姿态与揉库行为)
+  - [2.11 autoware.launch.xml + e2e_simulator.launch.xml — 初始位姿自动初始化](#211-autowarelaunchxml--e2e_simulatorlaunchxml--初始位姿自动初始化)
+  - [2.12 ekf_localizer.param.yaml + localization_error_monitor.param.yaml — 定位诊断阈值](#212-ekf_localizerparamyaml--localization_error_monitorparamyaml--定位诊断阈值)
 - [3. 数据改动：点云地图降采样](#3-数据改动点云地图降采样)
 - [4. 环境配置](#4-环境配置)
 - [5. 辅助脚本](#5-辅助脚本)
@@ -97,22 +100,28 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
 | 3 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/ndt_scan_matcher/ndt_scan_matcher.param.yaml` | 1 行 | 重启 launch |
 | 4 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_perception_config/config/object_recognition/prediction/map_based_prediction.param.yaml` | +4 行 | 重启 launch |
 | 5 | 源码 | `~/autoware_2.1.0/src/universe/autoware_universe/simulator/autoware_carla_interface/launch/autoware_carla_interface.launch.xml` | +2 −1 行 | 重启 launch |
-| 6 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/topics.yaml` | 3 行 | 重启 launch |
-| 7 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_planning_config/config/scenario_planning/parking/freespace_planner/freespace_planner.param.yaml` | 1 行 | 重启 launch |
+| 6 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/topics.yaml` | **4 项监测阈值**（见 2.6） | 重启 launch |
+| 7 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_planning_config/config/scenario_planning/parking/freespace_planner/freespace_planner.param.yaml` | **3 个参数**（见 2.7、2.10） | 重启 launch |
 | 8 | 源码 | `~/autoware_2.1.0/src/universe/autoware_universe/system/autoware_component_state_monitor/launch/component_state_monitor.launch.py` | 1 行 | 重启 launch |
 | 9 | 源码 | `~/autoware_2.1.0/src/universe/autoware_universe/system/autoware_topic_state_monitor/src/topic_state_monitor_core.cpp` | 1 行 | **需编译** |
-| 10 | 数据 | `~/autoware_data/maps/Town04/pointcloud_map.pcd` | 524 MB → 28 MB | — |
-| 11 | 环境 | `~/.bashrc` | RMW / ccache | source |
-| 12 | 环境 | `~/.nvidia_env.sh` | CUDA + RMW | source |
-| 13 | 脚本 | `~/auto_engage.py`、`~/start_autoware_sim.sh` | 新增 | — |
+| 10 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/launch/autoware.launch.xml` | +2 行（见 2.11） | 重启 launch |
+| 11 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/ekf_localizer.param.yaml` | 5 个参数（见 2.12） | 重启 launch |
+| 12 | 源码 | `~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/localization_error_monitor.param.yaml` | 4 个参数（见 2.12） | 重启 launch |
+| 13 | 数据 | `~/autoware_data/maps/Town04/pointcloud_map.pcd` | 524 MB → 28 MB | — |
+| 14 | 环境 | `~/.bashrc` | RMW / ccache | source |
+| 15 | 环境 | `~/.nvidia_env.sh` | CUDA + RMW | source |
+| 16 | 脚本 | `~/auto_engage.py`、`~/start_autoware_sim.sh` | 新增 | — |
 
 **按仓库分组（便于 `git diff` / `git checkout`）**：
 
 ```bash
-# 仓库 A：autoware_launch（6 个文件）
+# 仓库 A：autoware_launch（9 个文件）
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/launch/e2e_simulator.launch.xml
+~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/launch/autoware.launch.xml
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/config/simulator/carla/component_state_monitor/topics.yaml
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/topics.yaml
+~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/ekf_localizer.param.yaml
+~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/localization_error_monitor.param.yaml
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/ndt_scan_matcher/ndt_scan_matcher.param.yaml
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_perception_config/config/object_recognition/prediction/map_based_prediction.param.yaml
 ~/autoware_2.1.0/src/launcher/autoware_launch/autoware_universe_launch/autoware_planning_config/config/scenario_planning/parking/freespace_planner/freespace_planner.param.yaml
@@ -126,7 +135,7 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
 **git diff 实际规模**：
 
 ```
-autoware_launch    : 6 files changed, 40 insertions(+), 29 deletions(-)
+autoware_launch    : 9 files changed, 71 insertions(+), 52 deletions(-)
 autoware_universe  : 3 files changed,  4 insertions(+),  3 deletions(-)
 ```
 
@@ -294,9 +303,15 @@ terminate called after throwing an instance of 'rclcpp::ParameterTypeException'
 
 ---
 
-### 2.6 `system/topics.yaml` — `/tf` 监测阈值
+### 2.6 `system/topics.yaml` — 监测阈值（**真正生效的那份**）
 
-路径：`src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/topics.yaml:180-182`（**这是真正被加载的那份**）
+路径：`src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/topics.yaml`
+
+> `tier4_system_component.launch.xml:25` 硬编码加载的就是这一份，`config/simulator/carla/` 那份从未被读取（详见 2.2）。
+
+共 4 项改动，格式均为 `warn_rate / error_rate / timeout`。
+
+#### 2.6.1 `/tf`（`map`→`base_link`）— 第 180~183 行
 
 ```diff
  - module: localization
@@ -328,9 +343,73 @@ terminate called after throwing an instance of 'rclcpp::ParameterTypeException'
         → 车停在 WAITING_FOR_ENGAGE，速度恒为 0
 ```
 
-**实测效果**（改完单次运行）：`status` 从 344 次 Timeout 变为 **848 次 OK / 0 Timeout**。
+**实测效果**：`status` 从 **344 次 Timeout** 变为 **848 次 OK / 0 Timeout**。
 
-**注意**：**仅改阈值不足以根治**。监测端本身在丢消息（`measured_rate` 只有 0.2~1.6 Hz，而 `/tf` 实际约 10 Hz），必须配合 2.8、2.9。
+**注意**：仅改阈值不足以根治。监测端本身在丢消息（`measured_rate` 只有 0.2~1.6 Hz，而 `/tf` 实际约 10 Hz），必须配合 2.8、2.9。
+
+#### 2.6.2 `/perception/traffic_light_recognition/traffic_signals` — 第 70~80 行（**完全禁用**）
+
+```diff
+     node_name_suffix: traffic_light_recognition_traffic_signals
+     topic: /perception/traffic_light_recognition/traffic_signals
+     topic_type: autoware_perception_msgs/msg/TrafficLightGroupArray
+     best_effort: false
+     transient_local: false
++    # Town04 map has no traffic lights, so this topic never publishes.
++    # Setting all thresholds to 0 disables the check entirely.
+-    warn_rate: 5.0
+-    error_rate: 1.0
+-    timeout: 1.0
++    warn_rate: 0.0
++    error_rate: 0.0
++    timeout: 0.0
+```
+
+**这是「MRM 反复急停」的直接原因。**
+
+Town04 地图没有红绿灯，该 topic 永远不发布数据，监测项因此持续报错：
+
+| 状态 | 次数（单次约 4 分钟运行） |
+|---|---|
+| WARN | 5 |
+| ERROR | 1 |
+| Timeout | 3 |
+
+它让 `perception` 分组无法通过 → `autonomous` 不可用 → `mrm_handler` 判定需要 MRM → `mrm_emergency_stop_operator` 发 `is_emergency=true` → `vehicle_cmd_gate: Emergency!`
+
+实测该日志出现 **67 次 Emergency，间隔约 2.2 秒一次**（正是 vehicle_cmd_gate 的检查周期）。
+
+**关键认知：轨迹规划正常 ≠ 能正常行驶。只要任一诊断项不可用，MRM 就会介入把车急停。**
+
+#### 2.6.3 其余三项频率阈值
+
+| 监测项 | 原值 | 新值 | 依据 |
+|---|---|---|---|
+| `/localization/pose_twist_fusion_filter/pose` | 5.0 / 1.0 / 1.0 | **3.0 / 0.5 / 2.5** | 实际约 8 Hz |
+| `/perception/obstacle_segmentation/pointcloud` | 5.0 / 1.0 / 1.0 | **0.8 / 0.3 / 2.5** | CARLA 单机通常 1~3 Hz |
+| `/perception/object_recognition/objects` | 5.0 / 1.0 / 1.0 | **1.5 / 0.5 / 2.5** | 实际约 3~5 Hz |
+
+#### 2.6.4 尚未跟上的项
+
+以下 6 项仍是原始值 `5.0 / 1.0 / 1.0`，carla 版改过但 system 版没跟上。如果后续 MRM 仍频繁，把它们也改为 `2.0 / 0.5 / 2.5`：
+
+```
+/planning/trajectory
+/control/trajectory_follower/control_cmd
+/control/command/control_cmd
+/vehicle/status/velocity_status
+/vehicle/status/steering_status
+/system/emergency/control_cmd
+```
+
+**效果汇总**：
+
+| 指标 | 修改前 | 修改后 |
+|---|---|---|
+| `/tf` 监测 OK 次数 | 30 | **848** |
+| `/tf` 监测 Timeout 次数 | 344 | **0** |
+| `traffic_light` 监测 | 持续 WARN/ERROR | **禁用，不再报** |
+| `vehicle_cmd_gate: Emergency!` | 67 次/4 分钟 | 待验证 |
 
 ---
 
@@ -426,6 +505,251 @@ colcon build --symlink-install --packages-select autoware_topic_state_monitor
 ```
 
 单包约 9 秒。编译后重启 launch 生效。
+
+---
+
+### 2.10 `freespace_planner.param.yaml` — 泊车姿态与揉库行为
+
+路径：`src/launcher/autoware_launch/autoware_universe_launch/autoware_planning_config/config/scenario_planning/parking/freespace_planner/freespace_planner.param.yaml`
+
+在 2.7 的 `vehicle_shape_margin_m` 之后，又调整了两个影响**入库姿态**和**揉库次数**的参数：
+
+```diff
+-    max_turning_ratio: 0.5 # ratio of actual turning limit of vehicle
++    max_turning_ratio: 0.8 # {OVERRIDE: allow larger steering per search step so A* can align heading inside a tight parking slot}
+
+-    direction_change_weight: 2.0
++    direction_change_weight: 1.0 # {OVERRIDE: prefer an extra shift to straighten up instead of entering the slot diagonally}
+```
+
+#### `max_turning_ratio` — 每步允许的转向量
+
+A\* 搜索时，每个扩展步骤的转向角 = 车辆最大转向角 × 该比值：
+
+| 值 | 每步最大转角 | 说明 |
+|---|---|---|
+| 0.5（原值） | `0.70 × 0.5 = 0.35 rad ≈ 20°` | 在 4.95 m 车位里无法完成姿态修正 |
+| **0.8（新值）** | `0.70 × 0.8 = 0.56 rad ≈ 32°` | 摆正能力显著提升 |
+
+0.8 仍是车辆物理极限（`max_steer_angle: 0.70 rad`）的 80%，生成的轨迹可被控制器执行。
+
+#### `direction_change_weight` — 换挡代价
+
+A\* 每换一次挡（前进 ↔ 倒车）罚该值：
+
+| 场景 | 代价计算 |
+|---|---|
+| **原值 2.0**：前进摆正 → 换挡(2.0) → 倒车 → 换挡(2.0) → 微调 → 换挡(2.0) | 约 **6.0** + 路程 |
+| 对照：斜着一次挤进去 | **0** + 一点角度偏差（`angle_goal_range: 6.0` 允许） |
+
+原值下 A\* 必然选后者。降到 1.0 后，多换挡的总代价降到约 3.0，与「斜停的角度代价」接近，A\* 开始愿意走「先摆正再倒车入库」的路线。
+
+#### 三个参数的配合关系
+
+```yaml
+vehicle_shape_margin_m: 0.05      # 2.7 — 决定「有没有解」
+max_turning_ratio: 0.8            # 本节 — 决定「解的姿态精度」
+direction_change_weight: 1.0      # 本节 — 决定「愿不愿意多换挡调整」
+```
+
+- **margin 0.05** → A\* 车长 4.94 m，能进 4.95 m 车位（余量 1 cm），从「无解」变为「有解」
+- **turning_ratio 0.8** → 每个搜索步能转 32°，车位内可以摆正
+- **direction_weight 1.0** → 愿意多换一次挡来摆正，而不是斜着进
+
+#### 实测效果
+
+- ✅ **揉库（反复前进后退调整）次数明显减少**
+- ✅ 入库更顺畅，不再出现「在车位口反复试探十几秒」的情况
+- ✅ 车能真正停进车位框内（此前 margin 0.4 时只能停在入口外 0.9 m）
+
+推测主因是 `vehicle_shape_margin_m: 0.4 → 0.05` 让 A\* 从「无解、反复 reset」变为「一次找到可行解」；`max_turning_ratio` 和 `direction_change_weight` 进一步改善了轨迹质量。
+
+#### 姿态仍可能不完美的原因
+
+完成判定函数根本不看朝向：
+
+```cpp
+// utils.cpp:182-187
+bool is_near_target(const Pose & target, const Pose & current, double th_distance_m)
+{
+  const auto d = calc_pose_deviation(target, current);
+  return abs(d.yaw) < M_PI_2 &&              // ← 90 度容差
+         abs(d.longitudinal) < th_distance_m &&
+         abs(d.lateral) < th_distance_m;
+}
+```
+
+**yaw 容差是 90 度**，配合 `th_arrived_distance_m: 0.5`，只要位置在 0.5 m 内就判为到达，**之后不再修正姿态**。
+
+若要求更高精度，可继续调：
+
+| 参数 | 当前 | 可试 | 代价 |
+|---|---|---|---|
+| `theta_size` | 120（3°/格） | 180（**2°/格**） | 搜索空间 ×1.5，A\* 变慢 |
+| `angle_goal_range` | 6.0 | **3.0** | 可能因 1 cm 余量导致 `Can't find goal` |
+| `smoothness_weight` | 0.5 | 0.3 | 轨迹可能不够平滑 |
+
+**物理限制**：车位 4.95 m vs A\* 车长 4.94 m，余量仅 **1 cm**，而 costmap 分辨率通常 5~10 cm。姿态误差很难完全消除。
+
+#### 回退
+
+```bash
+cd ~/autoware_2.1.0/src/launcher/autoware_launch
+git checkout -- autoware_universe_launch/autoware_planning_config/config/scenario_planning/parking/freespace_planner/freespace_planner.param.yaml
+```
+
+> ⚠️ 该命令会**同时回退** 2.7 的 `vehicle_shape_margin_m: 0.05`，车将回到「停在车位入口外」的状态。
+
+---
+
+### 2.11 `autoware.launch.xml` + `e2e_simulator.launch.xml` — 初始位姿自动初始化
+
+路径：
+
+- `src/launcher/autoware_launch/autoware_launch/launch/e2e_simulator.launch.xml:14`、`:76`
+- `src/launcher/autoware_launch/autoware_launch/launch/autoware.launch.xml:9`、`:107`
+
+**问题**：`spawn_point` 控制的是 CARLA 里车辆的**物理生成位置**，与 Autoware 的**初始位姿**（告诉 NDT/EKF 车在地图哪里）是完全独立的两件事。启动后 EKF 一直报：
+
+```
+The node is not activated. Provide initial pose to pose_initializer
+```
+
+必须手动调 `/api/localization/initialize` 才能继续。
+
+**机制**：`autoware_core_localization.launch.xml:87` 本来支持自动初始化：
+
+```xml
+<let name="user_defined_initial_pose/enable"
+     value="$(eval "len($(var initial_pose)) == 7")"/>
+```
+
+**只要传入的 `initial_pose` 数组有 7 个元素，系统就自动用它初始化。** 但中间两层 launch 没有把这个参数透传下去。
+
+**改动**：
+
+```diff
+# e2e_simulator.launch.xml — 声明参数
++  <arg name="initial_pose" default="[266.825, 232.325, 0.0, 0.0, 0.0, 0.7071, 0.7071]"
++       description="Autoware initial pose in map frame: [x, y, z, qx, qy, qz, qw]. ..."/>
+
+# e2e_simulator.launch.xml — include autoware.launch.xml 时透传
++      <arg name="initial_pose" value="$(var initial_pose)"/>
+
+# autoware.launch.xml — 声明参数（默认空，不影响其他场景）
++  <arg name="initial_pose" default="[]" description="..."/>
+
+# autoware.launch.xml — include component_localization.launch.xml 时透传
++      <arg name="initial_pose" value="$(var initial_pose)"/>
+```
+
+`component_localization.launch.xml` 本来就接受这个参数，不用改。
+
+**默认值推导**（`spawn_point = 266.825,-232.325,0.0,0.0,0.0,-90`）：
+
+| 项 | CARLA 值 | map 值 |
+|---|---|---|
+| x | 266.825 | 266.825 |
+| y | -232.325 | **232.325**（取负） |
+| yaw | -90° | **+90°**（取负）→ `qz = qw = 0.7071` |
+
+**生效标志**：日志出现
+
+```
+[pose_initializer]: Set user defined initial pose
+[pose_initializer]: EKF Activation succeeded
+[pose_initializer]: NDT Activation succeeded
+```
+
+之后无需任何手动操作。
+
+**注意**：`spawn_point` 和 `initial_pose` 是**两份独立的默认值，不会自动换算**。改前者时必须同步改后者。传 `initial_pose:=[]` 可关闭自动初始化，回到手动模式。
+
+---
+
+### 2.12 `ekf_localizer.param.yaml` + `localization_error_monitor.param.yaml` — 定位诊断阈值
+
+路径：
+
+- `src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/ekf_localizer.param.yaml`
+- `src/launcher/autoware_launch/autoware_universe_launch/autoware_localization_config/config/localization_error_monitor.param.yaml`
+
+**问题**：定位本身能工作，但诊断图仍判三个子项不满足，导致 `autonomous/available = false`：
+
+```
+/autoware/localization ERROR
+  ├─ scan_matching_status WARN     ← NDT 未收敛
+  ├─ accuracy ERROR                ← 误差椭圆超限
+  └─ sensor_fusion_status ERROR    ← EKF 连续 100 次没收到 pose
+```
+
+**原因**：这些阈值按真实传感器标定，CARLA 仿真下必然超标。
+
+| 项 | 原阈值 | 为什么仿真超标 |
+|---|---|---|
+| `scan_matching_status` | 似然 ≥ 2.0 | 虚拟 LiDAR 与实测点云差异大 |
+| `accuracy` | 椭圆长轴 1.5 m / **横向 0.3 m** | 横向 0.3 m 对仿真 NDT 不可能达到 |
+| `sensor_fusion_status` | 连续 100 次无更新 | IMU/NDT 偶发跳帧就会累积到 |
+
+**改动**：
+
+```diff
+# ekf_localizer.param.yaml
+-      pose_smoothing_steps: 5
++      pose_smoothing_steps: 3 # {OVERRIDE: reduce localization latency in CARLA sim}
+
+-      pose_no_update_count_threshold_warn: 50
+-      pose_no_update_count_threshold_error: 100
+-      twist_no_update_count_threshold_warn: 50
+-      twist_no_update_count_threshold_error: 100
++      pose_no_update_count_threshold_warn: 120 # {OVERRIDE: relax for CARLA sim}
++      pose_no_update_count_threshold_error: 240 # {OVERRIDE: relax for CARLA sim}
++      twist_no_update_count_threshold_warn: 120 # {OVERRIDE: relax for CARLA sim}
++      twist_no_update_count_threshold_error: 240 # {OVERRIDE: relax for CARLA sim}
+
+# localization_error_monitor.param.yaml
+-    error_ellipse_size: 1.5
+-    warn_ellipse_size: 1.2
+-    error_ellipse_size_lateral_direction: 0.3
+-    warn_ellipse_size_lateral_direction: 0.25
++    error_ellipse_size: 3.0 # {OVERRIDE: relax for CARLA sim}
++    warn_ellipse_size: 2.5 # {OVERRIDE: relax for CARLA sim}
++    error_ellipse_size_lateral_direction: 0.8 # {OVERRIDE: relax for CARLA sim}
++    warn_ellipse_size_lateral_direction: 0.6 # {OVERRIDE: relax for CARLA sim}
+```
+
+#### `pose_smoothing_steps: 5 → 3` 是最关键的一改
+
+5 步平滑让定位输出比点云滞后 **2.5 秒**，直接导致感知 `transform` 失败：
+
+```
+[lidar_centerpoint] Lookup would require extrapolation into the future.
+  Requested time 145.250002 but the latest data is at time 142.750002,
+  when looking up transform from frame [map] to frame [base_link]
+[lidar_centerpoint] Fail to preprocess and skip to detect.
+```
+
+降到 3 后滞后缩小到 **0.05~0.10 秒**，感知不再跳过整帧点云。
+
+**警告：不要降到 2 或更低。** 实测 `steps: 2` 会引入新问题：
+
+```
+[EKF] EKF period may be too slow to finish pose smoothing!! (0.0500 sec)
+```
+
+因为 EKF 实际周期约 0.05 s（20 Hz，达不到设定的 50 Hz），平滑窗口需要 ≥ 3 × 0.02 s = 0.06 s 才够。
+
+| `pose_smoothing_steps` | 该警告次数 |
+|---|---|
+| 5 | **0** |
+| 2 | 21 ~ 44 |
+| **3** | 应为 0 |
+
+#### NDT 收敛阈值也放宽过两次
+
+见 2.3 节：`2.3 → 2.0 → 1.5`。
+
+**说明**：放宽阈值不等于解决问题。NDT 的匹配质量本身没提升，只是让诊断不再因「仿真与实测数据的固有差异」误判。**换真实车时这些值必须调回去。**
 
 ---
 
@@ -781,14 +1105,11 @@ ros2 bag record -o /dev/shm/bag_$(date +%H%M%S) ...
 
 ## 附录 A  地图与车位数据
 
-### A.1 车位统计
+### A.1 车位
 
 ```
 parking_space 总数: 35
 长度分布: 4.74 ~ 4.95 m
-  - 4.74 m × 10 个
-  - 4.85 m × 若干
-  - 4.95 m × 11 个（全部在 x ≈ 291 一带）
 ```
 
 ### A.2 常用车位坐标
@@ -828,7 +1149,7 @@ max_steer_angle : 0.70 rad (40.1°)
 
 2.录制rosbag(日志)
 
-3.启动autoware
+3.启动autoware（等待大约10秒地图中会出现具有感知的自车）
 
 4.放置goal
 
@@ -898,4 +1219,4 @@ ros2 bag record -o ~/parking_sim_logs/run_$(date +%Y%m%d_%H%M%S) \
 
 ```
 
-![img](img.png)
+![img](img/img.png)
