@@ -37,6 +37,10 @@ ros2 launch autoware_launch e2e_simulator.launch.xml \
 
 ![img3](img/img3.png)
 
+occ珊格图像（occupancy grid ----[costmap_generator]----> costmap）
+
+![img4](img/img4.png)
+
 ## 目录
 
 - [0. 环境](#0-环境基线)
