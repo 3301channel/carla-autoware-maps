@@ -2,7 +2,15 @@
 
 > 记录在 `~/autoware_2.1.0` 全新安装后，为跑通 CARLA + Town04 自动泊车仿真所做的全部改动
 >
-> 地图文件夹分别是：`/Town04`下采样地图、`/Town04 tiny`分割停车场的地图、`/parking lot`模拟停车场
+> 地图文件夹分别是：`/Town04`下采样地图、`/Town04 tiny`分割停车场的地图、`/parking lot`模拟停车场、
+
+
+
+园区地图行车规划
+
+![img5](img/img5.png)
+
+模拟点云验证规划算法
 
 ---
 
@@ -19,6 +27,8 @@ ros2 launch autoware_launch planning_simulator.launch.xml \
 ```
 
 ![img2](img/img2.png)
+
+外部仿真器carla仿真
 
 ```bash
 source ~/.nvidia_env.sh
